@@ -19,6 +19,16 @@ public class FrustrumCulling : MonoBehaviour
 
     void Update()
     {
-        
+        var bounds = collider.bounds;
+
+        cameraFrustum = GeometryUtility.CalculateFrustumPlanes(camera);
+        if (GeometryUtility.TestPlanesAABB(cameraFrustum, bounds))
+        {
+            renderer.sharedMaterial.color = Color.green;
+        }
+        else
+        {
+            renderer.sharedMaterial.color = Color.red;
+        }
     }
 }
