@@ -9,6 +9,43 @@ public class FrustrumCulling : MonoBehaviour
     Plane[] cameraFrustrum;
     Collider collider;
 
+
+    //Calcular el frustrum de la camara con la posicion, la direccion normalizada, el aspect ratio y la distancia
+    public static Plane[] CalculateFrustum(Vector3 origin, Vector3 direction,
+     float fovRadians, float viewRatio, float distance)
+    {
+        //Calculo de la distancia y lados del frustrum
+        Vector3 nearCenter = origin + direction * 0.3f;
+        Vector3 farCenter = origin + direction * distance;
+        Vector3 camRight = Vector3.Cross(direction, Vector3.up) * -1;
+        Vector3 camUp = Vector3.Cross(direction, camRight);
+
+        //Calculo del ancho y largo del frustrum.
+        float nearHeight = 2 * Mathf.Tan(fovRadians / 2) * 0.3f;
+        float farHeight = 2 * Mathf.Tan(fovRadians / 2) * distance;
+        float nearWidth = nearHeight * viewRatio;
+        float farWidth = farHeight * viewRatio;
+
+        //Calculo de los 6 planos
+        Vector3 farTopLeft = farCenter + camUp * (farHeight * 0.5f) - camRight * (farWidth * 0.5f);
+        Vector3 farBottomLeft = farCenter - camUp * (farHeight * 0.5f) - camRight * (farWidth * 0.5f);
+        Vector3 farBottomRight = farCenter - camUp * (farHeight * 0.5f) + camRight * (farWidth * 0.5f);
+        Vector3 nearTopLeft = nearCenter + camUp * (nearHeight * 0.5f) - camRight * (nearWidth * 0.5f);
+        Vector3 nearTopRight = nearCenter + camUp * (nearHeight * 0.5f) + camRight * (nearWidth * 0.5f);
+        Vector3 nearBottomRight = nearCenter - camUp * (nearHeight * 0.5f) + camRight * (nearWidth * 0.5f);
+
+        Plane[] planes = {
+             new Plane(nearTopLeft,farTopLeft,farBottomLeft),
+             new Plane(nearTopRight,nearBottomRight,farBottomRight),
+             new Plane(farBottomLeft,farBottomRight,nearBottomRight),
+             new Plane(farTopLeft,nearTopLeft,nearTopRight),
+             new Plane(nearBottomRight,nearTopRight,nearTopLeft),
+             new Plane(farBottomRight,farBottomLeft,farTopLeft)};
+        return planes;
+    }
+
+
+    //Enum para identificar si el objeto esta dentro o fuera del Frustrum
     public enum TestPlanesResults
     {
         Inside = 0,
@@ -16,6 +53,7 @@ public class FrustrumCulling : MonoBehaviour
     }
     private static TestPlanesResults testResult;
 
+    //Calculo del minimo y maximo del objeto
     public static TestPlanesResults TestPlanesAABBInternalFast(Plane[] planes, ref Bounds bounds)
     {
 
@@ -25,6 +63,7 @@ public class FrustrumCulling : MonoBehaviour
         return TestPlanesAABBInternalFast(planes, ref min, ref max);
     }
 
+    //Retorna si el objeto esta dentro o fuera de los planos calculando el minimo y maximo de los lados del objeto en cada eje.
     public static TestPlanesResults TestPlanesAABBInternalFast(Plane[] planes, ref Vector3 boundsMin, ref Vector3 boundsMax)
     {
         Vector3 vmin, vmax;
@@ -71,14 +110,12 @@ public class FrustrumCulling : MonoBehaviour
                 vmin.z = boundsMax.z;
                 vmax.z = boundsMin.z;
             }
-
             var dot1 = normal.x * vmin.x + normal.y * vmin.y + normal.z * vmin.z;
             if (dot1 + planeDistance < 0)
                 return testResult = TestPlanesResults.Outside;
 
-          
-        }
 
+        }
         return testResult;
     }
 
@@ -89,14 +126,21 @@ public class FrustrumCulling : MonoBehaviour
         collider = GetComponent<Collider>();
     }
 
-    
+
     void Update()
     {
         var bounds = collider.bounds;
 
-        cameraFrustrum = GeometryUtility.CalculateFrustumPlanes(camera);
+        //Fov de la camara en radianes
+        float cameraFovRadians = camera.fieldOfView * Mathf.Deg2Rad;
+
+        //Calcular Frustrum
+        cameraFrustrum = CalculateFrustum(camera.transform.position, camera.transform.forward.normalized, cameraFovRadians, camera.aspect, camera.farClipPlane );    
+
+        //Calcular los collider del objeto con los planos del Frustrum.
         TestPlanesAABBInternalFast(cameraFrustrum, ref bounds);
 
+        //Si el objeto esta dentro del frustrum sera del color verde, de lo contrario sera transparente (negro).
         if (testResult == TestPlanesResults.Inside)
         {
             renderer.sharedMaterial.color = Color.green;
@@ -105,6 +149,6 @@ public class FrustrumCulling : MonoBehaviour
         {
             renderer.sharedMaterial.color = Color.clear;
         }
-        
+
     }
 }
