@@ -143,11 +143,11 @@ public class FrustrumCulling : MonoBehaviour
         //Si el objeto esta dentro del frustrum sera del color verde, de lo contrario sera transparente (negro).
         if (testResult == TestPlanesResults.Inside)
         {
-            renderer.sharedMaterial.color = Color.green;
+            renderer.GetComponent<MeshRenderer>().enabled = true;
         }
         else
         {
-            renderer.sharedMaterial.color = Color.clear;
+            renderer.GetComponent<MeshRenderer>().enabled = false;
         }
 
     }
